@@ -7,7 +7,7 @@
 http://example.com/feed/{フィード識別子}
 
 ## How to use
-- 以下のファイルの名前空間に開発するフィード識別子に修正します
+- 以下のファイルの名前空間を開発するフィード識別子に修正します
  - custom-feed.php
  - tests/test-custom-feed.php
 
