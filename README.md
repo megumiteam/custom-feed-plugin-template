@@ -1,0 +1,1 @@
+# custom-feed-plugin-template
