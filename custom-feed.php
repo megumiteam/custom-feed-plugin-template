@@ -31,8 +31,8 @@ class Custom_Feed {
 	
 	private static $instance = null;
 
-    private final function __construct() {
-	    $this->feed_name    = __NAMESPACE__;
+	private final function __construct() {
+		$this->feed_name    = __NAMESPACE__;
 		$this->revision_key = '_' . $this->feed_name . '_revision_id';
 		$this->status_key   = '_' . $this->feed_name . '_feed_status';
 		add_action( 'init'               , array( $this, 'init' ) );
@@ -44,23 +44,21 @@ class Custom_Feed {
 		add_action( 'wp_trash_post'      , array( $this, 'trash_feed_status' ) );
 		add_action( 'pre_get_posts'      , array( $this, 'exclude_category' ) );
 		add_filter( 'the_content'        , array( $this, 'strip_related_post' ) );
-    } 
+	} 
 
-    private final function __clone() {}
+	private final function __clone() {}
 
-    public static function get_instance()
-    {   
-        if(is_null(self::$instance))
-        {   
-            self::$instance = new self;
-        }   
+	public static function get_instance() {
+		if(is_null(self::$instance)) {
+			self::$instance = new self;
+		}
 
-        return self::$instance;
-    }
+		return self::$instance;
+	}
 
 	public function get_property($name){
-        return $this->$name;
-    }
+		return $this->$name;
+	}
 
 	public function init() {
 		add_feed( $this->feed_name, function(){
