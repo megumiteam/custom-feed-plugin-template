@@ -4,10 +4,10 @@
 オリジナルフィードを開発する際に使用するテンプレートです
 
 ## Endpoint
-http://example.com/feed/{名前空間}
+http://example.com/feed/{フィード識別子}
 
 ## How to use
-- 以下のファイルの名前空間に開発するフィードの識別子に修正します
+- 以下のファイルの名前空間に開発するフィード識別子に修正します
  - custom-feed.php
  - tests/test-custom-feed.php
 
@@ -25,5 +25,3 @@ private $status       = array(
 								);
 ~~~
 https://github.com/megumiteam/custom-feed-plugin-template/blob/master/custom-feed.php#L25-L30
-
-## Unit Test
