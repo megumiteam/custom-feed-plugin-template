@@ -14,18 +14,18 @@ class Custom_FeedTest extends \WP_UnitTestCase {
 		$wp_rewrite->set_permalink_structure('/archives/%post_id%');
 	}
 
-	/**
+    /**
      * @test
      * フィードのページヘアクセスするとis_feedが返るかテスト
      */
-     function is_rewrite() {	 
-      	 $this->factory->post->create();
-	     $this->go_to( '/feed/' . $this->feed->get_property('feed_name') );
+	function is_rewrite() {
+		$this->factory->post->create();
+		$this->go_to( '/feed/' . $this->feed->get_property('feed_name') );
 
-		 $this->assertQueryTrue( 'is_feed' );
-     }
-     
-	/**
+		$this->assertQueryTrue( 'is_feed' );
+	}
+
+    /**
      * @test
      * リビジョンが記事の更新に応じてカウントアップするかを確認するテスト
      */
@@ -44,7 +44,7 @@ class Custom_FeedTest extends \WP_UnitTestCase {
 		$this->assertEquals( '3', get_post_meta( $post_id, $this->feed->get_property('revision_key'), true ) );
 	}
 	
-	/**
+    /**
      * @test
      * <status>タグが投稿記事の各ステータスで変更されるかのテスト
      */
@@ -56,13 +56,13 @@ class Custom_FeedTest extends \WP_UnitTestCase {
 
 		do_action( 'publish_post', $post_id );
 		$this->assertEquals( $status['create'], get_post_meta( $post_id, $this->feed->get_property('status_key'), true ) );
-		
+
 		do_action( 'publish_post', $post_id );
 		$this->assertEquals( $status['update'], get_post_meta( $post_id, $this->feed->get_property('status_key'), true ) );
-		
+
 		wp_update_post( array( 'ID' => $post_id, 'post_status' => 'private' ) );
 		$this->assertEquals( $status['delete'], get_post_meta( $post_id, $this->feed->get_property('status_key'), true ) );
-		
+
 		do_action( 'publish_post', $post_id );
 		$this->assertEquals( $status['update'], get_post_meta( $post_id, $this->feed->get_property('status_key'), true ) );
 
@@ -72,8 +72,8 @@ class Custom_FeedTest extends \WP_UnitTestCase {
 		do_action( 'publish_post', $post_id );
 		$this->assertEquals( $status['update'], get_post_meta( $post_id, $this->feed->get_property('status_key'), true ) );
 	}
-	
-	/**
+
+    /**
      * @test
      * 記事内の【関連記事】以下を削除するテスト
      */
@@ -81,22 +81,22 @@ class Custom_FeedTest extends \WP_UnitTestCase {
 		global $post;
 		global $wp_query;
 		$wp_query->is_feed = true;
-        $wp_query->query_vars['feed']  = $this->feed->get_property('feed_name');
-	
+		$wp_query->query_vars['feed']  = $this->feed->get_property('feed_name');
+
 		$content = '<p>pretext</p>';
 		$content .= '<p>【関連記事】</p>';
 		$content .= '<p>aftertext</p>';
 
 		$args = array( 'post_content' => $content );
-        $post_id = $this->factory->post->create( $args );
-        $post = get_post( $post_id );
-        setup_postdata( $post );
+		$post_id = $this->factory->post->create( $args );
+		$post = get_post( $post_id );
+		setup_postdata( $post );
 		
 		$this->expectOutputString( '<p>pretext</p>' );
 		the_content();
 	}
 
-	/**
+    /**
      * @test
      * PRカテゴリが配信されていないかのテスト
      */
@@ -115,11 +115,5 @@ class Custom_FeedTest extends \WP_UnitTestCase {
 
 		$this->assertEquals(array_multisort($post_ids), array_multisort($roop_post_id));
 	}
-	
-	function custom_feed_setup_postdata( $args ) {
-        
-        
-        
-    }
-}
 
+}
