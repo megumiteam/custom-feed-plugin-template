@@ -19,11 +19,11 @@ register_activation_hook( __FILE__, function(){
 } );
 
 class Custom_Feed {
-	private $feed_name    = '';
-	private $revision_key = '';
+	private $feed_name;
+	private $revision_key;
+	private $status_key;
 	private $revision_first_value = 1;
-	private $status_key   = '';
-	private $status       = array(
+	private $status               = array(
 								'create' => 1,
 								'update' => 2,
 								'delete' => 3
