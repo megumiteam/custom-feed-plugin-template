@@ -128,7 +128,11 @@ class Custom_Feed {
 	}
 
 	public function get_status($post_id) {
-		return get_post_meta( $post_id, $this->revision_key, true );
+		$status = get_post_meta( $post_id, $this->revision_key, true );
+		if ( $status === '' ) {
+			$status = $this->status['create'];
+		}
+		return $status;
 	}
 
 	public function get_revision($post_id) {
