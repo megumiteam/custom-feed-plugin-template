@@ -32,22 +32,22 @@ class Custom_FeedTest extends \WP_UnitTestCase {
 	function post_revision() {
 		$post_id = $this->factory->post->create( array( 'post_status' => 'draft' ) );
 
-		$this->assertSame( '', get_post_meta( $post_id, $this->feed->get_property('revision_key'), true ) );
+		$this->assertEquals( '1', $this->feed->get_revision($post_id) );
 
 		wp_update_post( array( 'ID' => $post_id, 'post_status' => 'publish' ) );
-		$this->assertEquals( '1', get_post_meta( $post_id, $this->feed->get_property('revision_key'), true ) );
+		$this->assertEquals( '1', $this->feed->get_revision($post_id) );
 
 		wp_update_post( array( 'ID' => $post_id, 'post_status' => 'private' ) );
-		$this->assertEquals( '2', get_post_meta( $post_id, $this->feed->get_property('revision_key'), true ) );
+		$this->assertEquals( '2', $this->feed->get_revision($post_id) );
 		
 		wp_update_post( array( 'ID' => $post_id, 'post_status' => 'publish' ) );
-		$this->assertEquals( '3', get_post_meta( $post_id, $this->feed->get_property('revision_key'), true ) );
+		$this->assertEquals( '3', $this->feed->get_revision($post_id) );
 
 		wp_trash_post( $post_id );
-		$this->assertEquals( '4', get_post_meta( $post_id, $this->feed->get_property('revision_key'), true ) );
+		$this->assertEquals( '4', $this->feed->get_revision($post_id) );
 
 		wp_update_post( array( 'ID' => $post_id, 'post_status' => 'publish' ) );
-		$this->assertEquals( '5', get_post_meta( $post_id, $this->feed->get_property('revision_key'), true ) );
+		$this->assertEquals( '5', $this->feed->get_revision($post_id) );
 	}
 	
     /**
@@ -58,25 +58,25 @@ class Custom_FeedTest extends \WP_UnitTestCase {
 		$post_id = $this->factory->post->create( array( 'post_status' => 'draft' ) );
 		$status  = $this->feed->get_property('status');
 
-		$this->assertSame( '', get_post_meta( $post_id, $this->feed->get_property('status_key'), true ) );
+		$this->assertSame( $status['create'], $this->feed->get_status($post_id) );
 
 		wp_update_post( array( 'ID' => $post_id, 'post_status' => 'publish' ) );
-		$this->assertEquals( $status['create'], get_post_meta( $post_id, $this->feed->get_property('status_key'), true ) );
+		$this->assertEquals( $status['create'], $this->feed->get_status($post_id) );
 
 		wp_update_post( array( 'ID' => $post_id, 'post_status' => 'publish' ) );
-		$this->assertEquals( $status['update'], get_post_meta( $post_id, $this->feed->get_property('status_key'), true ) );
+		$this->assertEquals( $status['update'], $this->feed->get_status($post_id) );
 
 		wp_update_post( array( 'ID' => $post_id, 'post_status' => 'private' ) );
-		$this->assertEquals( $status['delete'], get_post_meta( $post_id, $this->feed->get_property('status_key'), true ) );
+		$this->assertEquals( $status['delete'], $this->feed->get_status($post_id) );
 
 		wp_update_post( array( 'ID' => $post_id, 'post_status' => 'publish' ) );
-		$this->assertEquals( $status['update'], get_post_meta( $post_id, $this->feed->get_property('status_key'), true ) );
+		$this->assertEquals( $status['update'], $this->feed->get_status($post_id) );
 
 		wp_trash_post( $post_id );
-		$this->assertEquals( $status['delete'], get_post_meta( $post_id, $this->feed->get_property('status_key'), true ) );
+		$this->assertEquals( $status['delete'], $this->feed->get_status($post_id) );
 
 		wp_update_post( array( 'ID' => $post_id, 'post_status' => 'publish' ) );
-		$this->assertEquals( $status['update'], get_post_meta( $post_id, $this->feed->get_property('status_key'), true ) );
+		$this->assertEquals( $status['update'], $this->feed->get_status($post_id) );
 	}
 
     /**
