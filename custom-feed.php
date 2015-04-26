@@ -36,11 +36,9 @@ class Custom_Feed {
 		$this->revision_key = '_' . $this->feed_name . '_revision_id';
 		$this->status_key   = '_' . $this->feed_name . '_feed_status';
 		add_action( 'init'               , array( $this, 'init' ) );
-		add_action( 'publish_post'       , array( $this, 'publish_post_revision' ) );
-		add_action( 'publish_post'       , array( $this, 'publish_post_status' ) );
-		add_action( 'publish_to_publish' , array( $this, 'publish_post_revision' ) );
-		add_action( 'publish_to_publish' , array( $this, 'publish_post_status' ) );
-		add_action( 'save_post'          , array( $this, 'save_post' ), 10, 2 );
+		add_action( 'save_post'          , array( $this, 'post_revision' ), 10, 2 );
+		add_action( 'publish_post'       , array( $this, 'post_status' ) );
+		add_action( 'save_post'          , array( $this, 'private_post' ), 10, 2 );
 		add_action( 'wp_trash_post'      , array( $this, 'trash_feed_status' ) );
 		add_action( 'pre_get_posts'      , array( $this, 'exclude_category' ) );
 		add_filter( 'the_content'        , array( $this, 'strip_related_post' ) );
@@ -66,7 +64,11 @@ class Custom_Feed {
 		});
 	}
 
-	public function publish_post_revision( $post_id ) {
+	public function post_revision( $post_id, $post ) {
+		if ( $post->post_status !== 'publish' && $post->post_status !== 'private' && $post->post_status !== 'trash' ) {
+			return;
+		}
+
 		$revision = get_post_meta( $post_id, $this->revision_key, true );
 		if ( $revision === '' ) {
 			update_post_meta( $post_id, $this->revision_key, $this->revision_first_value );
@@ -75,8 +77,8 @@ class Custom_Feed {
 			update_post_meta( $post_id, $this->revision_key, ++$revision );
 		}
 	}
-	
-	public function publish_post_status( $post_id ) {
+
+	public function post_status( $post_id ) {
 		$revision = get_post_meta( $post_id, $this->status_key, true );
 		if ( $revision === '' ) {
 			update_post_meta( $post_id, $this->status_key, $this->status['create'] );
@@ -85,7 +87,7 @@ class Custom_Feed {
 		}
 	}
 
-	public function save_post( $post_id, $post ) {
+	public function private_post( $post_id, $post ) {
 		if ( $post->post_status === 'private' ) {
 			update_post_meta( $post_id, $this->status_key, $this->status['delete'] );
 		}

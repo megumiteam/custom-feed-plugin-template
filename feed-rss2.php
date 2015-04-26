@@ -7,8 +7,9 @@
 function get_enclosure_rss($post_id){
 	$images = wp_get_attachment_url(get_post_thumbnail_id($post_id));
 	$the_list = '';
-	if (empty($images))
-		return;
+	if (empty($images)) {
+		return $the_list;
+	}
 	$the_list .= sprintf('<enclosure url="%s" type="image/jpeg" >'."\n", esc_attr( $images ) );
 	return $the_list;
 }

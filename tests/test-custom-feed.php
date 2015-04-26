@@ -34,14 +34,20 @@ class Custom_FeedTest extends \WP_UnitTestCase {
 
 		$this->assertSame( '', get_post_meta( $post_id, $this->feed->get_property('revision_key'), true ) );
 
-		do_action('publish_post', $post_id);
+		wp_update_post( array( 'ID' => $post_id, 'post_status' => 'publish' ) );
 		$this->assertEquals( '1', get_post_meta( $post_id, $this->feed->get_property('revision_key'), true ) );
 
-		do_action('publish_post', $post_id);
+		wp_update_post( array( 'ID' => $post_id, 'post_status' => 'private' ) );
 		$this->assertEquals( '2', get_post_meta( $post_id, $this->feed->get_property('revision_key'), true ) );
-
-		do_action('publish_post', $post_id);
+		
+		wp_update_post( array( 'ID' => $post_id, 'post_status' => 'publish' ) );
 		$this->assertEquals( '3', get_post_meta( $post_id, $this->feed->get_property('revision_key'), true ) );
+
+		wp_trash_post( $post_id );
+		$this->assertEquals( '4', get_post_meta( $post_id, $this->feed->get_property('revision_key'), true ) );
+
+		wp_update_post( array( 'ID' => $post_id, 'post_status' => 'publish' ) );
+		$this->assertEquals( '5', get_post_meta( $post_id, $this->feed->get_property('revision_key'), true ) );
 	}
 	
     /**
@@ -54,22 +60,22 @@ class Custom_FeedTest extends \WP_UnitTestCase {
 
 		$this->assertSame( '', get_post_meta( $post_id, $this->feed->get_property('status_key'), true ) );
 
-		do_action( 'publish_post', $post_id );
+		wp_update_post( array( 'ID' => $post_id, 'post_status' => 'publish' ) );
 		$this->assertEquals( $status['create'], get_post_meta( $post_id, $this->feed->get_property('status_key'), true ) );
 
-		do_action( 'publish_post', $post_id );
+		wp_update_post( array( 'ID' => $post_id, 'post_status' => 'publish' ) );
 		$this->assertEquals( $status['update'], get_post_meta( $post_id, $this->feed->get_property('status_key'), true ) );
 
 		wp_update_post( array( 'ID' => $post_id, 'post_status' => 'private' ) );
 		$this->assertEquals( $status['delete'], get_post_meta( $post_id, $this->feed->get_property('status_key'), true ) );
 
-		do_action( 'publish_post', $post_id );
+		wp_update_post( array( 'ID' => $post_id, 'post_status' => 'publish' ) );
 		$this->assertEquals( $status['update'], get_post_meta( $post_id, $this->feed->get_property('status_key'), true ) );
 
 		wp_trash_post( $post_id );
 		$this->assertEquals( $status['delete'], get_post_meta( $post_id, $this->feed->get_property('status_key'), true ) );
 
-		do_action( 'publish_post', $post_id );
+		wp_update_post( array( 'ID' => $post_id, 'post_status' => 'publish' ) );
 		$this->assertEquals( $status['update'], get_post_meta( $post_id, $this->feed->get_property('status_key'), true ) );
 	}
 
@@ -115,5 +121,19 @@ class Custom_FeedTest extends \WP_UnitTestCase {
 
 		$this->assertEquals(array_multisort($post_ids), array_multisort($roop_post_id));
 	}
+
+    /**
+     * @test
+     * @runInSeparateProcess
+     * @preserveGlobalState disabled
+     * feed-rss2.phpにてPHPエラーが発生していないかテスト
+     */
+	 function error_check() {
+		$post_ids = $this->factory->post->create_many( 5 );
+		
+		$this->go_to( '/feed/' . $this->feed->get_property('feed_name') );
+		
+		require_once( dirname(__FILE__) . '/../feed-rss2.php' );
+	 }
 
 }
