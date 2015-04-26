@@ -30,25 +30,27 @@ class Custom_FeedTest extends \WP_UnitTestCase {
      * リビジョンが記事の更新に応じてカウントアップするかを確認するテスト
      */
 	function post_revision() {
+		$revision = $this->feed->get_property('revision_first_value');
 		$post_id = $this->factory->post->create( array( 'post_status' => 'draft' ) );
 
-		$this->assertEquals( '1', $this->feed->get_revision($post_id) );
+		$this->assertEquals( $revision, $this->feed->get_revision($post_id) );
 
 		wp_update_post( array( 'ID' => $post_id, 'post_status' => 'publish' ) );
-		$this->assertEquals( '1', $this->feed->get_revision($post_id) );
+		$this->assertEquals( $revision, $this->feed->get_revision($post_id) );
 
 		wp_update_post( array( 'ID' => $post_id, 'post_status' => 'private' ) );
-		$this->assertEquals( '2', $this->feed->get_revision($post_id) );
+		$this->assertEquals( ++$revision, $this->feed->get_revision($post_id) );
 		
 		wp_update_post( array( 'ID' => $post_id, 'post_status' => 'publish' ) );
-		$this->assertEquals( '3', $this->feed->get_revision($post_id) );
+		$this->assertEquals( ++$revision, $this->feed->get_revision($post_id) );
 
 		wp_trash_post( $post_id );
-		$this->assertEquals( '4', $this->feed->get_revision($post_id) );
+		$this->assertEquals( ++$revision, $this->feed->get_revision($post_id) );
 
 		wp_update_post( array( 'ID' => $post_id, 'post_status' => 'publish' ) );
-		$this->assertEquals( '5', $this->feed->get_revision($post_id) );
+		$this->assertEquals( ++$revision, $this->feed->get_revision($post_id) );
 	}
+
 	
     /**
      * @test
