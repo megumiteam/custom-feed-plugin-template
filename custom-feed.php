@@ -130,7 +130,13 @@ class Custom_Feed {
 	public function get_status($post_id) {
 		$status = get_post_meta( $post_id, $this->status_key, true );
 		if ( $status === '' ) {
-			$status = $this->status['create'];
+			$post = get_post($post_id);
+			if ( is_object($post) && ( $post->post_status === 'trash' || $post->post_status === 'private' ) ) {
+				$status = $this->status['delete'];
+			} else {
+				$status = $this->status['create'];
+			}
+			
 		}
 		return $status;
 	}
