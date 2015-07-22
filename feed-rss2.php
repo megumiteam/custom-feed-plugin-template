@@ -10,7 +10,10 @@ function get_enclosure_rss($post_id){
 	if (empty($images)) {
 		return $the_list;
 	}
-	$the_list .= sprintf('<enclosure url="%s" type="image/jpeg" >'."\n", esc_attr( $images ) );
+	$data = preg_split( '/wp-content/', $images );
+	$size = file_exists( WP_CONTENT_DIR . $data[1] ) ? filesize( WP_CONTENT_DIR . $data[1] ) : '';
+	$caption = get_post( get_post_thumbnail_id($post_id) )->post_excerpt;
+	$the_list .= sprintf('<enclosure url="%s" type="image/jpeg" length="%s" yj:caption="%s" />'."\n", esc_attr( $images ), esc_attr( $size ), esc_attr ( $caption ) );
 	return $the_list;
 }
 
@@ -26,13 +29,11 @@ function get_related_post_rss($post_id){
 
 		$the_list = '';
 		foreach ( $relatedposts as $relatedpost ) {
-			$list_item = '<relatetd><title><![CDATA[%s]]></title><url>%s</url></pol:relation>'."\n";
+			$list_item = '<yj:related><yj:link yj:url="%s"><![CDATA[%s]]></yj:link></yj:related>'."\n";
 			$the_list .= sprintf(
 				$list_item,
-				esc_attr(get_the_title($relatedpost['ID'])),
-				esc_attr(get_permalink($relatedpost['ID']))
-				);
-
+				esc_attr(get_permalink($relatedpost['ID'])),
+				esc_attr(get_the_title($relatedpost['ID'])));
 		}
 	} elseif ( function_exists('st_get_related_posts') ) {
 		$relatedposts = st_get_related_posts('post_id='.intval($post_id).'&number=5&format=array');
@@ -41,12 +42,11 @@ function get_related_post_rss($post_id){
 
 		$the_list = '';
 		foreach ( $relatedposts as $relatedpost ) {
-			$list_item = '<relatetd><title><![CDATA[%s]]></title><url>%s</url></pol:relation>'."\n";
+			$list_item = '<yj:related><yj:link yj:url="%s"><![CDATA[%s]]></yj:link></yj:related>'."\n";
 			$the_list .= sprintf(
 				$list_item,
-				esc_attr($relatedpost->post_title),
-				esc_attr(get_permalink($relatedpost->ID))
-				);
+				esc_attr(get_permalink($relatedpost->ID)),
+				esc_attr($relatedpost->post_title));
 		}
 	} else {
 		return;
@@ -64,44 +64,20 @@ function date_iso8601($time) {
 	return $date;
 }
 
-//カテゴリ
-function get_category_rss($post_id) {
-	$categories = get_the_category($post_id);
-	$the_list = '';
-	$cat_names = array();
-
-	if ( !empty($categories) ) foreach ( (array) $categories as $category ) {
-		$cat_names[$category->term_id] = sanitize_term_field('name', $category->name, $category->term_id, 'category', 'raw');
-	}
-	unset($categories);
-
-	$cat_names = array_unique($cat_names);
-	foreach ( $cat_names as $cat_id => $cat_name ) {
-		$the_list .= sprintf('<category><![CDATA[%s]]></category>'."\n", esc_html( $cat_name ));
-		break;
-	}
-	unset($cat_names);
-
-	return $the_list;
+function update_link( $matches ) {
+	return '<img' . $matches[1] . 'src="' . $matches[2] . '" ' . $matches[3].'><cite>'.get_the_title().'</cite>';
 }
+
 // ここからフィード
 nocache_headers();
 header('Content-Type: ' . feed_content_type('rss-http') . '; charset=' . get_option('blog_charset'), true);
 
 echo '<?xml version="1.0" encoding="'.get_option('blog_charset').'"?'.'>'."\n"; ?>
-<rss version="2.0" 
-xmlns:content="http://purl.org/rss/1.0/modules/content/" 
-xmlns:wfw="http://wellformedweb.org/CommentAPI/" 
-xmlns:dc="http://purl.org/dc/elements/1.1/" 
-xmlns:atom="http://www.w3.org/2005/Atom" 
-xmlns:sy="http://purl.org/rss/1.0/modules/syndication/" 
-xmlns:slash="http://purl.org/rss/1.0/modules/slash/">
+<rss version="2.0" xmlns:yj="http://cmspf.yahoo.co.jp/rss" yj:version="1.0">
   <channel>
-    <language>ja</language>
     <title><?php bloginfo_rss('name'); ?></title>
     <link><?php bloginfo_rss('url') ?></link>
     <description><?php bloginfo_rss("description") ?></description>
-    <copyright>Copyright</copyright>
     <lastBuildDate><?php echo date_iso8601(get_lastpostmodified('blog')); ?></lastBuildDate>
 <?php
 while (have_posts()) :
@@ -110,14 +86,51 @@ while (have_posts()) :
 	$pub_date = get_post_time('Y-m-d H:i:s', false);
 	$mod_date = get_post_modified_time('Y-m-d H:i:s', false);
 	$content = get_the_content_feed('rss2');
+	$content = preg_replace_callback( '#<img([^>]*)src=["\']([^"\']+)["\']([^>]*)>#i', 'update_link', $content, -1 );
+	
+	$allowed_html = array(
+		'br' => array(),
+		'p' => array(),
+		'h2' => array(),
+		'h3' => array(),
+		'cite' => array(),
+		'blockquote' => array(),
+		'img' => array(
+			'width' => array(),
+			'height' => array(),
+			'src' => array(),
+			'alt' => array(),
+			'caption' => array(),
+		),
+		'strong' => array(),
+		'video' => array(
+			'src' => array(),
+		),
+		'iframe' => array(
+			'id' => array(),
+			'scrolling' => array(),
+			'frameborder' => array(),
+			'allowtransparency' => array(),
+			'style' => array(),
+			'src' => array(),
+			'width' => array(),
+			'height' => array(),
+		),
+	);
+
+	$content = wp_kses(
+			$content,
+			$allowed_html,
+			array('http', 'https')
+		);
 ?>
     <item>
       <title><![CDATA[<?php the_title_rss() ?>]]></title>
       <link><?php the_permalink_rss() ?></link>
-      <pubDate><?php echo date_iso8601($pub_date); ?></pubDate>
-      <lastPubDate><?php echo date_iso8601($mod_date); ?></lastPubDate>
-      <status><?php echo customfeed\Custom_Feed::get_instance()->get_status($post_id); ?></status>
-      <revision><?php echo customfeed\Custom_Feed::get_instance()->get_revision($post_id); ?></revision>
+      <author><?php the_author(); ?></author>
+      <?php yahoo_netarica\Custom_Feed::get_instance()->item_category(); ?>
+      <guid><?php the_ID(); ?></guid>
+      <pubDate><?php echo date_iso8601($mod_date); ?></pubDate>
       <description><![CDATA[<?php echo $content; ?>]]></description>
 	  <?php echo get_related_post_rss($post_id); ?>
 	  <?php echo get_enclosure_rss($post_id); ?>
