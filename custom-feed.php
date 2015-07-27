@@ -1,8 +1,8 @@
 <?php
 /*
-Plugin Name: yahooネタりか配信フィード。
+Plugin Name: Feed Plugin Template
 Version: 1.0
-Description: エンドポイントは/feed?type=yahoo-netarica
+Description: 配信用フィードプラグイン用のテンプレート
 Author: Digitalcube
 Author URI: https://digitalcube.jp
 Plugin URI: https://digitalcube.jp
@@ -10,42 +10,38 @@ Text Domain: custom-feed
 Domain Path: /languages
 */
 
-namespace yahoo_netarica;
+namespace customfeed;
 
 Custom_Feed::get_instance();
+register_activation_hook( __FILE__, function(){
+	Custom_Feed::get_instance()->init();
+	flush_rewrite_rules();
+} );
+
 class Custom_Feed {
 	private $feed_name;
-	private $categories = array(
-							'geinou'        => '芸能',
-							'topic'         => '時事ネタ',
-							'trend'         => '最新トレンド',
-							'love'          => '恋愛',
-							'beauty'        => '美容',
-							'gourmet'       => 'グルメ',
-							'travel'        => '旅行',
-							'entertainment' => '映画・音楽',
-							'anime'         => 'アニメ',
-							'omoshiro'      => 'おもしろネタ',
-							'neta'          => '雑学・裏ワザ',
-							);
+	private $revision_key;
+	private $status_key;
+	private $revision_first_value = 1;
+	private $status               = array(
+								'create' => 1,
+								'update' => 2,
+								'delete' => 3
+								);
 	
 	private static $instance = null;
 
 	private final function __construct() {
 		$this->feed_name    = __NAMESPACE__;
-		add_action( 'do_feed_rss2'       , array( $this, 'do_feed_rss2' ), 1 );
-		add_action( 'save_post'          , array( $this, 'save_post' ) );
+		$this->revision_key = '_' . $this->feed_name . '_revision_id';
+		$this->status_key   = '_' . $this->feed_name . '_feed_status';
+		add_action( 'init'               , array( $this, 'init' ) );
+		add_action( 'save_post'          , array( $this, 'post_revision' ), 10, 2 );
+		add_action( 'publish_post'       , array( $this, 'post_status' ) );
+		add_action( 'save_post'          , array( $this, 'private_post' ), 10, 2 );
+		add_action( 'wp_trash_post'      , array( $this, 'trash_feed_status' ) );
 		add_action( 'pre_get_posts'      , array( $this, 'exclude_category' ) );
 		add_filter( 'the_content'        , array( $this, 'strip_related_post' ) );
-		add_action( 'add_meta_boxes', function(){
-				add_meta_box(
-					'yahoo_feed' . $this->feed_name,
-					'Yahoo ねたりか Category',
-					array( $this, 'add_meta_boxes' ),
-					'post',
-					'side'
-				);
-			} );
 	} 
 
 	private final function __clone() {}
@@ -62,11 +58,43 @@ class Custom_Feed {
 		return $this->$name;
 	}
 
-	public function do_feed_rss2() {
-		if ( isset($_GET['type']) && $_GET['type'] == $this->feed_name) {
+	public function init() {
+		add_feed( $this->feed_name, function(){
 			load_template( dirname(__FILE__) . '/feed-rss2.php' );
-			exit;
+		});
+	}
+
+	public function post_revision( $post_id, $post ) {
+		if ( $post->post_status !== 'publish' && $post->post_status !== 'private' && $post->post_status !== 'trash' ) {
+			return;
 		}
+
+		$revision = get_post_meta( $post_id, $this->revision_key, true );
+		if ( $revision === '' ) {
+			update_post_meta( $post_id, $this->revision_key, $this->revision_first_value );
+		} else {
+			$revision = intval($revision);
+			update_post_meta( $post_id, $this->revision_key, ++$revision );
+		}
+	}
+
+	public function post_status( $post_id ) {
+		$revision = get_post_meta( $post_id, $this->status_key, true );
+		if ( $revision === '' ) {
+			update_post_meta( $post_id, $this->status_key, $this->status['create'] );
+		} else {
+			update_post_meta( $post_id, $this->status_key, $this->status['update'] );
+		}
+	}
+
+	public function private_post( $post_id, $post ) {
+		if ( $post->post_status === 'private' ) {
+			update_post_meta( $post_id, $this->status_key, $this->status['delete'] );
+		}
+	}
+
+	public function trash_feed_status( $post_id ) {
+		update_post_meta($post_id, $this->status_key, $this->status['delete']);
 	}
 
 	public function exclude_category( $query ) {
@@ -98,56 +126,26 @@ class Custom_Feed {
 		}
 		return $content;
 	}
-	
-	public function item_category() {
-		if ( get_post_meta( get_the_ID(), '_yahoo_feed_category_' . $this->feed_name, true ) ) {
-			return '<category>'.intval( get_post_meta( get_the_ID(), '_yahoo_feed_category_' . $this->feed_name, true ) ).'</category>';
-		} else {
-			return '';
+
+	public function get_status($post_id) {
+		$status = get_post_meta( $post_id, $this->status_key, true );
+		if ( $status === '' ) {
+			$post = get_post($post_id);
+			if ( is_object($post) && ( $post->post_status === 'trash' || $post->post_status === 'private' ) ) {
+				$status = $this->status['delete'];
+			} else {
+				$status = $this->status['create'];
+			}
+			
 		}
+		return $status;
 	}
 
-	public function add_meta_boxes( $post ) {
-			wp_nonce_field( 'yahoo_netarica_category_' . $this->feed_name, 'yahoo_netarica_category_nonce_' . $this->feed_name );
-			$value = get_post_meta( $post->ID, '_yahoo_netarica_category_' . $this->feed_name, true );
-
-			if ( empty( $value ) ) {
-				//$value = '';
-			}
-			echo '<ul>';
-			foreach ( $this->categories as $key => $cat ) {
-				printf(
-					'<li><label><input type="radio" name="%1$s" value="%2$s" %4$s /> %3$s</label></li>',
-					esc_attr('yahoo_netarica_category_' . $this->feed_name),
-					esc_attr($key),
-					esc_html($cat),
-					( $value === $key ) ? 'checked="checked"' : ''
-				);
-			}
-			echo '</ul>';
-	}
-
-	public function save_post( $post_id ) {
-
-		if ( ! isset( $_POST['yahoo_netarica_category_nonce_' . $this->feed_name] ) ) {
-			return;
+	public function get_revision($post_id) {
+		$revision = get_post_meta( $post_id, $this->revision_key, true );
+		if ( $revision === '' ) {
+			$revision = $this->revision_first_value;
 		}
-		
-		if ( ! wp_verify_nonce( $_POST['yahoo_netarica_category_nonce_' . $this->feed_name], 'yahoo_netarica_category_' . $this->feed_name ) ) {
-			return;
-		}
-		if ( defined( 'DOING_AUTOSAVE' ) && DOING_AUTOSAVE ) {
-			return;
-		}
-		if ( ! current_user_can( 'edit_post', $post_id ) ) {
-			return;
-		}
-		if ( ! isset( $_POST['yahoo_netarica_category_' . $this->feed_name] ) ) {
-			return;
-		}
-
-		if ( array_key_exists( $_POST['yahoo_netarica_category_' . $this->feed_name], $this->categories ) ) {
-			update_post_meta( $post_id, '_yahoo_netarica_category_' . $this->feed_name, $_POST['yahoo_netarica_category_' . $this->feed_name] );
-		}
+		return $revision;
 	}
 }

@@ -1,5 +1,5 @@
 <?php
-namespace yahoo_netarica;
+namespace customfeed;
 
 class Custom_FeedTest extends \WP_UnitTestCase {
 	private $feed;
@@ -20,9 +20,65 @@ class Custom_FeedTest extends \WP_UnitTestCase {
      */
 	function is_rewrite() {
 		$this->factory->post->create();
-		$this->go_to( '/feed?type=' . $this->feed->get_property('feed_name') );
+		$this->go_to( '/feed/' . $this->feed->get_property('feed_name') );
 
 		$this->assertQueryTrue( 'is_feed' );
+	}
+
+    /**
+     * @test
+     * リビジョンが記事の更新に応じてカウントアップするかを確認するテスト
+     */
+	function post_revision() {
+		$revision = $this->feed->get_property('revision_first_value');
+		$post_id = $this->factory->post->create( array( 'post_status' => 'draft' ) );
+
+		$this->assertEquals( $revision, $this->feed->get_revision($post_id) );
+
+		wp_update_post( array( 'ID' => $post_id, 'post_status' => 'publish' ) );
+		$this->assertEquals( $revision, $this->feed->get_revision($post_id) );
+
+		wp_update_post( array( 'ID' => $post_id, 'post_status' => 'private' ) );
+		$this->assertEquals( ++$revision, $this->feed->get_revision($post_id) );
+		
+		wp_update_post( array( 'ID' => $post_id, 'post_status' => 'publish' ) );
+		$this->assertEquals( ++$revision, $this->feed->get_revision($post_id) );
+
+		wp_trash_post( $post_id );
+		$this->assertEquals( ++$revision, $this->feed->get_revision($post_id) );
+
+		wp_update_post( array( 'ID' => $post_id, 'post_status' => 'publish' ) );
+		$this->assertEquals( ++$revision, $this->feed->get_revision($post_id) );
+	}
+
+	
+    /**
+     * @test
+     * <status>タグが投稿記事の各ステータスで変更されるかのテスト
+     */
+	function post_status() {
+		$post_id = $this->factory->post->create( array( 'post_status' => 'draft' ) );
+		$status  = $this->feed->get_property('status');
+
+		$this->assertSame( $status['create'], $this->feed->get_status($post_id) );
+
+		wp_update_post( array( 'ID' => $post_id, 'post_status' => 'publish' ) );
+		$this->assertEquals( $status['create'], $this->feed->get_status($post_id) );
+
+		wp_update_post( array( 'ID' => $post_id, 'post_status' => 'publish' ) );
+		$this->assertEquals( $status['update'], $this->feed->get_status($post_id) );
+
+		wp_update_post( array( 'ID' => $post_id, 'post_status' => 'private' ) );
+		$this->assertEquals( $status['delete'], $this->feed->get_status($post_id) );
+
+		wp_update_post( array( 'ID' => $post_id, 'post_status' => 'publish' ) );
+		$this->assertEquals( $status['update'], $this->feed->get_status($post_id) );
+
+		wp_trash_post( $post_id );
+		$this->assertEquals( $status['delete'], $this->feed->get_status($post_id) );
+
+		wp_update_post( array( 'ID' => $post_id, 'post_status' => 'publish' ) );
+		$this->assertEquals( $status['update'], $this->feed->get_status($post_id) );
 	}
 
     /**
@@ -55,8 +111,9 @@ class Custom_FeedTest extends \WP_UnitTestCase {
 	function strip_pr_category() {
 		$cat_id  = $this->factory->category->create( array('slug' => 'pr') );
 		$post_ids = $this->factory->post->create_many( 5 );
-		$this->factory->post->create_many( 5, array( 'post_category' => array( $cat_id ) ) );	
-		$this->go_to( '/feed?type=' . $this->feed->get_property('feed_name') );
+		$this->factory->post->create_many( 5, array( 'post_category' => array( $cat_id ) ) );
+		
+		$this->go_to( '/feed/' . $this->feed->get_property('feed_name') );
 		
 		$roop_post_id = array();
 		while( have_posts() ) {
@@ -74,10 +131,9 @@ class Custom_FeedTest extends \WP_UnitTestCase {
      * feed-rss2.phpにてPHPエラーが発生していないかテスト
      */
 	 function error_check() {
-	 	$user_id  = $this->factory->user->create();
-		$post_ids = $this->factory->post->create_many( 5, array( 'post_author' =>  $user_id) );
+		$post_ids = $this->factory->post->create_many( 5 );
 		
-		$this->go_to( '/feed?type=' . $this->feed->get_property('feed_name') );
+		$this->go_to( '/feed/' . $this->feed->get_property('feed_name') );
 		
 		require_once( dirname(__FILE__) . '/../feed-rss2.php' );
 	 }
